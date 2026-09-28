@@ -96,6 +96,12 @@ const Button = ({
     </button>
 );
 
+const Missing = ({ items }: { items: [boolean, string][] }) => {
+    const missing = items.filter(([absent]) => absent).map(([, label]) => label);
+    if (missing.length === 0) return null;
+    return <p className="mt-2 text-neutral-500">Needs: {missing.join("; ")}.</p>;
+};
+
 export default function Signers() {
     const [rpId, setRpId] = useState("");
     const [chainId, setChainId] = useState(RECOVERY_CHAINS[2].chain.id);
@@ -274,6 +280,23 @@ export default function Signers() {
             <section className="mt-6 border-t pt-5">
                 <h2 className="font-semibold">Smart account</h2>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <Button primary onClick={identify} disabled={busy || !rpId}>
+                        {credential ? "Passkey connected" : "Connect passkey"}
+                    </Button>
+                    <span className="text-neutral-600">
+                        {credential
+                            ? sameKey(state?.passkey ?? null, credential)
+                                ? "It is the passkey this Smart account runs on."
+                                : "Not the passkey stored on chain for this address and chain."
+                            : "The passkey is asked to sign twice; that is how its public key is found. The address fills in from it."}
+                    </span>
+                </div>
+                {credential && (
+                    <div className="mt-2 break-all font-mono text-xs text-neutral-600">
+                        passkey id: {credential.id}
+                    </div>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-3">
                     <select
                         value={chainId}
                         onChange={(e) => setChainId(Number(e.target.value))}
@@ -295,6 +318,11 @@ export default function Signers() {
                         refresh
                     </Button>
                 </div>
+                {chainId === 1 && (
+                    <p className="mt-2 text-amber-700">
+                        Ethereum mainnet gas is expensive. Optimism is the cheap place to try this.
+                    </p>
+                )}
                 {!hasBuiltInBundler && (
                     <input
                         placeholder="Bundler URL: https://api.pimlico.io/v2/{chainId}/rpc?apikey=…"
@@ -324,9 +352,6 @@ export default function Signers() {
             <section className="mt-6 border-t pt-5">
                 <h2 className="font-semibold">1. Attach an EOA</h2>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <Button onClick={identify} disabled={busy || !rpId}>
-                        {credential ? "Passkey identified" : "Identify current passkey"}
-                    </Button>
                     <input
                         placeholder="EOA private key (0x…)"
                         value={eoaKey}
@@ -337,17 +362,6 @@ export default function Signers() {
                         generate
                     </Button>
                 </div>
-                {credential && (
-                    <div className="mt-2 break-all font-mono text-xs text-neutral-600">
-                        <div>passkey id: {credential.id}</div>
-                        <div>
-                            on chain:{" "}
-                            {sameKey(state?.passkey ?? null, credential)
-                                ? "this is the root passkey"
-                                : "not the key stored on chain"}
-                        </div>
-                    </div>
-                )}
                 {eoaAddress && (
                     <div className="mt-2 break-all font-mono text-xs text-neutral-600">
                         EOA: {eoaAddress} {eoaAttached && "(attached)"}
@@ -367,6 +381,15 @@ export default function Signers() {
                     >
                         Attach EOA (signed with the passkey)
                     </Button>
+                    <Missing
+                        items={[
+                            [!credential, "connect the passkey above"],
+                            [!validAddress, "a Smart account address"],
+                            [!eoaAddress, "an EOA key: paste one or press generate"],
+                            [!canSend, "a bundler URL"],
+                            [eoaAttached, "nothing: this EOA is already attached"],
+                        ]}
+                    />
                 </div>
             </section>
 
@@ -422,6 +445,15 @@ export default function Signers() {
                         Test: send an empty operation with the new passkey
                     </Button>
                 </div>
+                <Missing
+                    items={[
+                        [!validAddress, "a Smart account address"],
+                        [!eoaAttached, "the EOA from step 1 attached on this chain"],
+                        [!newPasskey, "a new passkey: press Create new passkey"],
+                        [!canSend, "a bundler URL"],
+                        [newPasskeyOnChain, "nothing: the new passkey is already root"],
+                    ]}
+                />
             </section>
 
             <section className="mt-6 border-t pt-5">
